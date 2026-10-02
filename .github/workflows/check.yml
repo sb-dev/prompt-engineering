@@ -21,7 +21,7 @@ jobs:
       source_sha: ${{ steps.scope.outputs.source_sha }}
     steps:
       # Classification always uses trusted base-branch code and GitHub's file list.
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
@@ -46,7 +46,7 @@ jobs:
       source_sha: ${{ steps.source.outputs.sha }}
     steps:
       # Candidate code runs only in this read-only job. No provider or write token.
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ github.event.pull_request.merge_commit_sha }}
           persist-credentials: false
@@ -74,7 +74,7 @@ jobs:
       source_sha: ${{ steps.evaluate.outputs.source_sha }}
     steps:
       # Only base-branch tooling is executed. The candidate is fetched as data.
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
@@ -112,7 +112,7 @@ jobs:
       actions: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
