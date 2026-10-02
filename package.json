@@ -1,0 +1,23 @@
+{
+  "name": "prompt-engineering",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Evidence-led prompt and skill maintenance with GitHub Actions.",
+  "engines": {
+    "node": ">=22.16.0"
+  },
+  "scripts": {
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "validate": "node --experimental-strip-types tools/cli.ts validate",
+    "package": "node --experimental-strip-types tools/cli.ts package",
+    "evaluate": "node --experimental-strip-types tools/cli.ts evaluate",
+    "check": "npm run typecheck && npm test && npm run validate && npm run package",
+    "pe": "node --experimental-strip-types tools/cli.ts"
+  },
+  "devDependencies": {
+    "@types/node": "24.0.4",
+    "typescript": "5.8.3"
+  }
+}

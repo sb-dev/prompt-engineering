@@ -1,0 +1,161 @@
+name: Check
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+permissions:
+  contents: read
+concurrency:
+  group: check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  scope:
+    name: Classify change
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      history_only: ${{ steps.scope.outputs.history_only }}
+      source_sha: ${{ steps.scope.outputs.source_sha }}
+    steps:
+      # Classification always uses trusted base-branch code and GitHub's file list.
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - id: scope
+        run: node --experimental-strip-types tools/cli.ts classify-pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+  offline:
+    name: Offline checks
+    needs: scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      source_sha: ${{ steps.source.outputs.sha }}
+    steps:
+      # Candidate code runs only in this read-only job. No provider or write token.
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - id: source
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - run: npm ci --ignore-scripts
+      - run: npm run check
+        if: needs.scope.outputs.history_only != 'true'
+      - run: npm run typecheck && npm test && npm run validate
+        if: needs.scope.outputs.history_only == 'true'
+  evaluate:
+    name: Evaluate and review
+    needs: scope
+    if: needs.scope.outputs.history_only != 'true' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
+    outputs:
+      source_sha: ${{ steps.evaluate.outputs.source_sha }}
+    steps:
+      # Only base-branch tooling is executed. The candidate is fetched as data.
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - id: evaluate
+        continue-on-error: true
+        run: node --experimental-strip-types tools/cli.ts check-pr --out build/check
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          OPENAI_GRADER_MODEL: ${{ vars.OPENAI_GRADER_MODEL }}
+          OPENAI_REVIEW_MODEL: ${{ vars.OPENAI_REVIEW_MODEL }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: pr-evidence-${{ github.event.pull_request.head.sha }}
+          path: build/check/proof.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Require successful evaluation and review
+        if: steps.evaluate.outcome != 'success'
+        run: exit 1
+  post:
+    name: Post review
+    needs: [scope, evaluate]
+    if: always() && !cancelled() && needs.scope.result == 'success' && needs.scope.outputs.history_only != 'true' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: node --experimental-strip-types tools/cli.ts download-artifact --out build/evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_NAME: pr-evidence-${{ github.event.pull_request.head.sha }}
+      - run: node --experimental-strip-types tools/cli.ts post-review --out build/evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+  gate:
+    name: promotion-gate
+    needs: [scope, offline, evaluate, post]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Require all jobs and the same tested merge commit
+        env:
+          SCOPE: ${{ needs.scope.result }}
+          HISTORY_ONLY: ${{ needs.scope.outputs.history_only }}
+          SCOPE_SHA: ${{ needs.scope.outputs.source_sha }}
+          OFFLINE: ${{ needs.offline.result }}
+          EVALUATE: ${{ needs.evaluate.result }}
+          POST: ${{ needs.post.result }}
+          OFFLINE_SHA: ${{ needs.offline.outputs.source_sha }}
+          EVALUATED_SHA: ${{ needs.evaluate.outputs.source_sha }}
+        run: |
+          test "$SCOPE" = success
+          test "$OFFLINE" = success
+          test -n "$SCOPE_SHA"
+          test "$OFFLINE_SHA" = "$SCOPE_SHA"
+          if [ "$HISTORY_ONLY" = true ]; then
+            test "$EVALUATE" = skipped
+            test "$POST" = skipped
+          else
+            test "$EVALUATE" = success
+            test "$POST" = success
+            test -n "$EVALUATED_SHA"
+            test "$OFFLINE_SHA" = "$EVALUATED_SHA"
+          fi

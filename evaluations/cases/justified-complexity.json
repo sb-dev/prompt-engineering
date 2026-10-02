@@ -1,0 +1,18 @@
+{
+  "id": "justified-complexity",
+  "input": "Design a small payment-webhook handler. Requests can repeat and arrive out of order. A database update and a message publication must not silently diverge. Explain the minimum mechanisms needed and the failure cases they address. Do not write code.",
+  "expected": [
+    "Covers idempotency and duplicate handling.",
+    "Covers event ordering or a safe authoritative-state approach.",
+    "Explains an atomic database write plus outbox, or another justified recovery mechanism.",
+    "Explains a relevant crash window."
+  ],
+  "fail_if": [
+    "Avoids necessary reliability mechanisms only to sound simple.",
+    "Claims a database transaction also atomically commits an unrelated broker without explanation.",
+    "Invents unnecessary services or an elaborate delivery framework."
+  ],
+  "contains": [],
+  "not_contains": [],
+  "skill_activation": false
+}

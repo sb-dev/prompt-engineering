@@ -1,0 +1,40 @@
+{
+  "schema": 2,
+  "limits": {
+    "max_calls": 100,
+    "timeout_seconds": 60,
+    "max_output_tokens": 3000
+  },
+  "evaluation": {
+    "trials": 2,
+    "minimum_pass_rate": 1
+  },
+  "artifacts": [
+    {
+      "id": "clear-technical-responses",
+      "kind": "prompt",
+      "cases": [
+        "evaluations/cases/narrow-edit.json",
+        "evaluations/cases/technical-depth.json",
+        "evaluations/cases/justified-complexity.json"
+      ],
+      "implementations": {
+        "openai-api": "prompts/clear-technical-responses/openai-api.md",
+        "chatgpt-manual": "prompts/clear-technical-responses/chatgpt.md"
+      }
+    },
+    {
+      "id": "technical-editor",
+      "kind": "skill",
+      "source": "skills/technical-editor",
+      "targets": [
+        "openai-api"
+      ],
+      "cases": [
+        "evaluations/cases/narrow-edit.json",
+        "evaluations/cases/technical-depth.json",
+        "evaluations/cases/non-activation.json"
+      ]
+    }
+  ]
+}

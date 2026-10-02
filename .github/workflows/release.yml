@@ -1,0 +1,66 @@
+name: Release
+on:
+  push:
+    branches: [main]
+    # history/** is deliberately absent: usage records never trigger publication.
+    paths: ['project.json', 'prompts/**', 'skills/**', 'platforms/**', 'evaluations/**']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: release
+  cancel-in-progress: false
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
+    outputs:
+      publish: ${{ steps.stage.outputs.publish }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - id: stage
+        run: node --experimental-strip-types tools/cli.ts stage-release --out build/release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          OPENAI_GRADER_MODEL: ${{ vars.OPENAI_GRADER_MODEL }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: steps.stage.outputs.publish == 'true'
+        with:
+          name: release-candidate
+          path: build/release/
+          if-no-files-found: error
+          retention-days: 90
+  publish:
+    needs: prepare
+    if: needs.prepare.outputs.publish == 'true' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: release
+    permissions:
+      contents: write
+      actions: read
+      issues: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: node --experimental-strip-types tools/cli.ts download-artifact --out build/publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_NAME: release-candidate
+      - run: node --experimental-strip-types tools/cli.ts publish --out build/publication
+        env:
+          GH_TOKEN: ${{ github.token }}

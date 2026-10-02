@@ -1,0 +1,17 @@
+{
+  "id": "technical-depth",
+  "input": "Edit this technical explanation for clarity. Preserve the important trade-offs and expand an incomplete explanation where necessary.\n\nOffset after DB write. Crash after write before offset means repeat. Idempotent write handles replay. Offset first can lose record. External side effect still needs its own deduplication. Explain that this does not establish end-to-end exactly-once delivery.",
+  "expected": [
+    "Explains that a crash after the database write but before the offset commit can replay a record.",
+    "Preserves the contrast between idempotency and committing the offset too early.",
+    "States that external effects need their own duplicate protection.",
+    "Does not claim end-to-end exactly-once delivery."
+  ],
+  "fail_if": [
+    "Removes a key failure window just to shorten the explanation.",
+    "Adds an unrelated platform or framework recommendation."
+  ],
+  "contains": [],
+  "not_contains": [],
+  "skill_activation": true
+}

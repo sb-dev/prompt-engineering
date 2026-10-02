@@ -1,0 +1,15 @@
+{
+  "id": "example-skills",
+  "repository": "owner/repository",
+  "ref": "main",
+  "question": "Which instruction patterns reduce unnecessary complexity without losing technical detail?",
+  "include": [
+    "skills"
+  ],
+  "exclude": [
+    "skills/legacy"
+  ],
+  "monitor": false,
+  "max_files": 30,
+  "max_chars": 120000
+}

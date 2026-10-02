@@ -1,0 +1,21 @@
+{
+  "id": "narrow-edit",
+  "input": "Edit only the timeout value from 5 seconds to 10 seconds in this technical note. Return only the updated note.\n\nRetry timeout: 5 seconds. Maximum attempts: 3. Setting: RETRY_TIMEOUT_SECONDS.",
+  "expected": [
+    "Returns exactly the note with the timeout changed to 10 seconds.",
+    "Preserves the attempt count and exact setting identifier."
+  ],
+  "fail_if": [
+    "Adds a framework, design advice or surrounding explanation.",
+    "Changes another value or omits the setting."
+  ],
+  "contains": [
+    "10 seconds",
+    "Maximum attempts: 3",
+    "RETRY_TIMEOUT_SECONDS"
+  ],
+  "not_contains": [
+    "5 seconds"
+  ],
+  "skill_activation": true
+}

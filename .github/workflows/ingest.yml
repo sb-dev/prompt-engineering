@@ -1,0 +1,83 @@
+name: Ingest GitHub
+on:
+  workflow_dispatch:
+    inputs:
+      repository:
+        description: Source repository (owner/repository)
+        required: true
+        type: string
+      ref:
+        description: Source branch, tag or commit
+        default: main
+        type: string
+      paths:
+        description: Comma-separated literal paths; empty means repository-wide
+        default: ''
+        type: string
+      exclude:
+        description: Comma-separated paths to exclude
+        default: ''
+        type: string
+      question:
+        description: Research question
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: ingest-${{ inputs.repository }}-${{ inputs.paths }}
+  cancel-in-progress: false
+jobs:
+  analyse:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: node --experimental-strip-types tools/cli.ts ingest --out build/ingestion
+        env:
+          GH_TOKEN: ${{ secrets.SOURCE_TOKEN || github.token }}
+          SOURCE_REPOSITORY: ${{ inputs.repository }}
+          SOURCE_REF: ${{ inputs.ref }}
+          SOURCE_PATHS: ${{ inputs.paths }}
+          SOURCE_EXCLUDE: ${{ inputs.exclude }}
+          RESEARCH_QUESTION: ${{ inputs.question }}
+          ALLOW_PRIVATE_SOURCES: ${{ vars.ALLOW_PRIVATE_SOURCES }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          OPENAI_REVIEW_MODEL: ${{ vars.OPENAI_REVIEW_MODEL }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: ingestion-evidence
+          path: build/ingestion/
+          if-no-files-found: error
+          retention-days: 90
+  propose:
+    needs: analyse
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: node --experimental-strip-types tools/cli.ts download-artifact --out build/ingestion
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_NAME: ingestion-evidence
+      - run: npm ci --ignore-scripts
+      # A separate automation identity lets the resulting PR trigger normal checks.
+      - run: node --experimental-strip-types tools/cli.ts publish-ingestion --out build/ingestion
+        env:
+          GH_TOKEN: ${{ secrets.AUTOMATION_TOKEN }}

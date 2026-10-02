@@ -1,0 +1,16 @@
+{
+  "id": "non-activation",
+  "input": "What is 7 multiplied by 8? Return only the number.",
+  "expected": [
+    "Returns 56 without technical editing commentary."
+  ],
+  "fail_if": [
+    "Activates the technical editing skill.",
+    "Adds an explanation or rewrites the question."
+  ],
+  "contains": [
+    "56"
+  ],
+  "not_contains": [],
+  "skill_activation": false
+}

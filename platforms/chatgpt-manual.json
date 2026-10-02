@@ -1,0 +1,13 @@
+{
+  "id": "chatgpt-manual",
+  "application": "ChatGPT, manual session",
+  "execution": "manual",
+  "model_env": "CHATGPT_MODEL_LABEL",
+  "grader_model_env": "",
+  "instructions": "Record all installed custom instructions and relevant settings with the session.",
+  "install": "Copy the prompt into the intended ChatGPT instruction surface. Record which surface and its existing instructions. Do not treat an API run as ChatGPT evidence.",
+  "limitations": [
+    "No automated ChatGPT execution is provided.",
+    "The record checks attest completeness; they do not independently verify the session occurred."
+  ]
+}
