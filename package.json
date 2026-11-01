@@ -17,7 +17,7 @@
     "pe": "node --experimental-strip-types tools/cli.ts"
   },
   "devDependencies": {
-    "@types/node": "24.0.4",
+    "@types/node": "26.6.6",
     "typescript": "5.8.3"
   }
 }
