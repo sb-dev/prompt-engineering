@@ -91,7 +91,7 @@ jobs:
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
           OPENAI_GRADER_MODEL: ${{ vars.OPENAI_GRADER_MODEL }}
           OPENAI_REVIEW_MODEL: ${{ vars.OPENAI_REVIEW_MODEL }}
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
           name: pr-evidence-${{ github.event.pull_request.head.sha }}
